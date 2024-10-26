@@ -1,0 +1,6 @@
+openai
+fastapi
+fastapi
+crewai
+crewai_tools
+python-dotenv
