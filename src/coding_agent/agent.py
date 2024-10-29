@@ -20,8 +20,8 @@ system_prompt = (
 options = ["FINISH"] + members
 
 
-class routeRespose(BaseModel):
-    next: Literal[*options]  # type: ignore
+class RouteRespose(BaseModel):
+    next: Literal[tuple(options)]  # type: ignore
 
 
 prompt = ChatPromptTemplate.from_messages(
@@ -39,7 +39,7 @@ prompt = ChatPromptTemplate.from_messages(
 llm = next_llm.get_open_ai_llm()
 
 def superviser_agent(state):
-    supervisor_chain = prompt | llm.with_structured_output(routeRespose)
+    supervisor_chain = prompt | llm.with_structured_output(RouteRespose)
     return supervisor_chain.invoke(state)
 
 research_agent = create_react_agent(llm, tools=[tavily_tool])
