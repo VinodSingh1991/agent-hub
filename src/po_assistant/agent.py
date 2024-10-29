@@ -1,107 +1,112 @@
-from crewai import Agent
-from tools import search_tool, web_search_tool, web_scrap_tool
 import os
+from langgraph import Agent  # Assuming LangGraph has an equivalent Agent class
 from dotenv import load_dotenv
-from crewai import LLM
+from textwrap import dedent
+from src.po_assistant.custom_tool.browser_tools import BrowserTools
+from src.po_assistant.custom_tool.search_tools import SearchTools
+from src.po_assistant.custom_tool.website_search import CustomWebSearchTool
+from langgraph_tools import FileReadTool, SerperDevTool, WebsiteSearchTool, YoutubeVideoSearchTool, FirecrawlSearchTool  # Assuming LangGraph has these or similar tool modules
+from src.llm_factory.acidaes_llm import next_llm
 
-from crewai import Agent
-from langchain.llms import OpenAI
-
-from tools.browser_tools import BrowserTools
-from tools.calculator_tools import CalculatorTools
-from tools.search_tools import SearchTools
-
-
-class TripAgents():
-
-  def city_selection_agent(self):
-    return Agent(
-        role='City Selection Expert',
-        goal='Select the best city based on weather, season, and prices',
-        backstory=
-        'An expert in analyzing travel data to pick ideal destinations',
-        tools=[
-            SearchTools.search_internet,
-            BrowserTools.scrape_and_summarize_website,
-        ],
-        verbose=True)
-
-  def local_expert(self):
-    return Agent(
-        role='Local Expert at this city',
-        goal='Provide the BEST insights about the selected city',
-        backstory="""A knowledgeable local guide with extensive information
-        about the city, it's attractions and customs""",
-        tools=[
-            SearchTools.search_internet,
-            BrowserTools.scrape_and_summarize_website,
-        ],
-        verbose=True)
-
-  def travel_concierge(self):
-    return Agent(
-        role='Amazing Travel Concierge',
-        goal="""Create the most amazing travel itineraries with budget and 
-        packing suggestions for the city""",
-        backstory="""Specialist in travel planning and logistics with 
-        decades of experience""",
-        tools=[
-            SearchTools.search_internet,
-            BrowserTools.scrape_and_summarize_website,
-            CalculatorTools.calculate,
-        ],
-        verbose=True)
-
-
-modal_name = "gpt-4o-mini"
-temperature = 0
-
-# Load the API key from the .env file
 load_dotenv()
 
-# Create the FastAPI app
-apiKey = os.getenv("OPENAI_API_KEY")
+# Initialize the LLM
+llm = next_llm.get_open_ai_llm()
 
-if apiKey is None:
-    print("API_KEY not found in .env file.")
-else:
-    print(f"API Key Loaded: {apiKey}")  # Check if the correct key is loaded (remove in production)
+# Initialize tools
+file_tool = FileReadTool()
+search_tool = SerperDevTool()
+web_rag_tool = WebsiteSearchTool()
+youtube = YoutubeVideoSearchTool()
+firecrawl = FirecrawlSearchTool(api_key=os.getenv("FILE_CROWL_API_KEY"))
 
-#this is openAi modal for the agent
-llm = LLM(
-    model=modal_name,
-    api_key=apiKey
-)
-
-#llm = OpenAI(api_key=apiKey, default_headers={"content-type": "application/json", "user-agent": "OpenAI-Request"})
-
-print ("LLM", llm)
-
-#Creating a Senior researcher agent
-
-reseracher = Agent(
-    role="Senior AI and Machine Learning Researcher",
-    name="Dr. Vinod",
-    goal="Uncover groundbreaking research in the field of AI {topic}",
-    backstory="Agent Vinod is a Senior Researcher at the Crew AI Research Institute. He has been working in the field of AI for over 10 years and has published numerous papers in top-tier conferences and journals. He is passionate about pushing the boundaries of AI research and is always on the lookout for new and exciting projects to work on. you explore and share your latest innovations in the field of AI.",
+# Agent Definitions
+product_manager = Agent(
+    role="Product Manager",
+    goal=dedent("""
+        Identify and analyze the top competition products in the market to compile a comprehensive list of 
+        10 features that are both unique and highly valuable to customers. Use these insights to recommend 
+        innovative improvements and strategic adjustments for the company’s product offerings, and reflect 
+        on whether the resources are valuable or not.
+    """),
+    backstory=dedent("""
+        As a seasoned Product Manager with a decade of experience in the tech industry, you have a keen eye for
+        identifying market trends and customer needs. Your expertise lies in dissecting competitors' products, 
+        extracting key insights, and leveraging this information to enhance your own products. Equipped with advanced 
+        analytical tools and a strategic mindset, you are now tasked with staying ahead of the competition by identifying 
+        unique and high-value features for integration into the product line.
+    """),
+    tools=[
+        SearchTools.search_internet,
+        BrowserTools.scrape_and_summarize_website,
+        youtube,
+    ],
+    allow_delegation=False,
     verbose=True,
-    memory=True,
-    tools=[search_tool, web_search_tool, web_scrap_tool],
-    allow_delegation=True,  
     llm=llm
 )
 
-
-#creating a senior blog writer agent in the field of AI and Machine Learning
-
-senior_blog_writer = Agent(
-    goal="Uncover groundbreaking research in the field of AI and write good blog {topic}",
-    role="Senior AI and Machine Learning Blog Writer",
-    name="Dr. Aayush",
-    verbose=True,
-    memory=True,
-    backstory="Dr. Aayush is a Senior AI and Machine Learning Blog Writer at the Crew AI Research Institute. He has a passion for writing and has been writing about AI and Machine Learning for over 5 years. He is always on the lookout for new and exciting topics to write about and is dedicated to sharing his knowledge with the world.",
+product_owner = Agent(
+    role="Product Owner",
+    goal=dedent("""
+        Identify and analyze the top competition products in the market to compile a comprehensive list of 
+        10 features that are both unique and highly valuable to customers. Use these insights to recommend 
+        innovative improvements and strategic adjustments for the company’s product offerings.
+    """),
+    backstory=dedent("""
+        As an experienced Product Owner, you bring a wealth of knowledge in product development and market analysis. 
+        With a background in tech startups, you excel at identifying key features that differentiate successful products. 
+        Your mission is to support the Product Manager by delivering detailed competitive analysis and feature 
+        recommendations, ensuring the company's products remain innovative and meet customer needs.
+    """),
+    tools=[
+        SearchTools.search_internet,
+        BrowserTools.scrape_and_summarize_website,
+        youtube,
+    ],
     allow_delegation=False,
-    tools=[search_tool, web_search_tool, web_scrap_tool],
+    verbose=True,
+    llm=llm
+)
+
+solution_architect = Agent(
+    role="CRM Solution Architect",
+    goal=dedent("""
+        Create a detailed product documentation that outlines solutions based on CRMNext components. 
+        Consolidate solutions for each feature to provide the project manager with a comprehensive view of the product architecture.
+    """),
+    backstory=dedent("""
+        With over 20 years as a CRM Solution Architect, you possess a deep understanding of CRM systems, including CRMNext. 
+        You are known for your ability to clarify complex solutions and simplify documentation. You are tasked with creating 
+        a comprehensive technical requirement documentation, leveraging CRMNext’s extensive components to achieve each product feature.
+    """),
+    tools=[
+        CustomWebSearchTool.search,
+    ],
+    allow_delegation=False,
+    verbose=True,
+    max_itr=1,
+    max_rpm=1,
+    llm=llm
+)
+
+scrum_master = Agent(
+    role="Project Manager",
+    goal=dedent("""
+        Develop a comprehensive Technical Requirement Document (TRD) to outline solutions for CRMNext-based components. 
+        Include sections for objectives, feature lists, implementation, test cases, deployment checklist, and estimated efforts.
+    """),
+    backstory=dedent("""
+        With over two decades of experience as a CRM Solution Architect, you possess an in-depth understanding of CRM platforms. 
+        Your role now is to create a Technical Requirement Document (TRD) for the CRMNext-based components of the project, 
+        outlining clear objectives, implementation steps, testing, deployment, and time estimates.
+    """),
+    tools=[
+         CustomWebSearchTool.search,
+    ],
+    allow_delegation=False,
+    verbose=True,
+    max_itr=1,
+    max_rpm=1,
     llm=llm
 )

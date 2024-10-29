@@ -15,7 +15,7 @@ def run_application(user_input):
     config = {"configurable": {"thread_id": thread_id,  "recursion_limit": 10}}
 
     # Get the LLM
-    model = next_llm.get_acidaes_llm_with_tool(tools_next)
+    model = next_llm.get_open_ai_llm_with_tools(tools_next)
 
     # Create the Assistant with tools and graph
     assistant_runnable = syatem_prompt | model 
